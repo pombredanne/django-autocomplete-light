@@ -1,3 +1,29 @@
+1.1.1
+
+- Added option to disable watch of autocompletes hidden selects,
+- Performance improvement on inlines,
+- Provide: autocomplete_light.FixedModelForm,
+- Allow override of form kwarg in modelform_factory,
+- taggit support: warn that commit=False is not supported by TagField,
+- Optimize updateWidgets with the help of DOMNodeInserted,
+- Avoid ImproperlyConfigured when using CreateView directly for popups only,
+- Mentioned python 2.6 support,
+- Django 1.5 support in test project
+
+1.1.0 BC break in templates.
+
+- Fix #51, replaced <div> tags by <span class="div">, this
+  enables rendering the widget in inline tags such as with {{
+  form.as_p }}, and also makes it valid HTML.
+- Fix #58, remove restrictions in choices_for_values.
+- Added to AUTHORS: Marc Hörsken.
+
+1.0.26 Fix #25: Prevent accidental inclusion of autocomplete_light/static.html
+
+1.0.25 Added support for django-taggit in django.contrib.taggit_fields.
+
+1.0.24 Added pt_BR translation, thanks Fábio C. Barrionuevo da Luz.
+
 1.0.23 Added FixedModelForm, workaround django issue #9321.
 
 1.0.22 Fix #46: $.data striped leading zeros from data-value
