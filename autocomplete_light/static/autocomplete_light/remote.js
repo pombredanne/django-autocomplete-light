@@ -11,12 +11,12 @@ var RemoteAutocompleteWidget = {
     getValue: function(choice) {
         var value = choice.data('value');
 
-        if (typeof(value)=='string' && isNaN(value) && value.match(/^http:/)) {
+        if (typeof(value)=='string' && isNaN(value) && value.match(/^https?:/)) {
             $.ajax(this.autocompleteOptions.url, {
                 async: false,
                 type: 'post',
                 data: {
-                    'value': value,
+                    'value': value
                 },
                 success: function(text, jqXHR, textStatus) {
                     value = text;
@@ -33,7 +33,7 @@ var RemoteAutocompleteWidget = {
 $(document).bind('yourlabsWidgetReady', function() {
     // Instanciate decks with RemoteAutocompleteWidget as override for all widgets with
     // autocomplete 'remote'.
-    $('.autocomplete-light-widget[data-bootstrap=rest_model]').live('initialize', function() {
+    $('body').on('initialize', '.autocomplete-light-widget[data-bootstrap=rest_model]', function() {
         $(this).yourlabsWidget(RemoteAutocompleteWidget);
     });
 });

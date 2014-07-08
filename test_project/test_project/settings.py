@@ -21,13 +21,24 @@ MANAGERS = ADMINS
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3', # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.
-        'NAME': 'db.sqlite',                      # Or path to database file if using sqlite3.
+        'NAME': os.path.join(PROJECT_ROOT, 'db.sqlite'),                      # Or path to database file if using sqlite3.
         'USER': '',                      # Not used with sqlite3.
         'PASSWORD': '',                  # Not used with sqlite3.
         'HOST': '',                      # Set to empty string for localhost. Not used with sqlite3.
         'PORT': '',                      # Set to empty string for default. Not used with sqlite3.
     }
 }
+
+TEMPLATE_CONTEXT_PROCESSORS = ('django.contrib.auth.context_processors.auth',
+ "django.core.context_processors.debug",
+ 'django.core.context_processors.debug',
+ 'django.core.context_processors.i18n',
+ 'django.core.context_processors.media',
+ 'django.core.context_processors.static',
+ 'django.core.context_processors.request',
+ 'django.core.context_processors.tz',
+ 'django.contrib.messages.context_processors.messages')
+
 
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
@@ -40,7 +51,13 @@ TIME_ZONE = 'America/Chicago'
 
 # Language code for this installation. All choices can be found here:
 # http://www.i18nguy.com/unicode/language-identifiers.html
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'en'
+
+# needed for hvad
+LANGUAGES = (
+  ('de', 'German'),
+  ('en', 'English'),
+)
 
 SITE_ID = 1
 
@@ -98,8 +115,9 @@ TEMPLATE_LOADERS = (
 )
 
 MIDDLEWARE_CLASSES = (
-    'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -128,7 +146,9 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     # Uncomment the next line to enable the admin:
     'django.contrib.admin',
+    'generic_inline',
     'cities_light',
+    'table_autocomplete',
     'djangorestframework',
     'south',
     'project_specific',
@@ -145,12 +165,19 @@ INSTALLED_APPS = (
     'm2m_autocomplete',
     'navigation_autocomplete',
     'docs_autocomplete',
-    'inline_autocomplete',
+    'inlines_outside_admin',
     'tagging',
     'template_autocomplete',
     'non_admin',
+    'non_id_foreignkey',
+    # test models
+    'autocomplete_light.tests',
     'non_admin_add_another',
     'support_sandino',
+    'default_template_autocomplete',
+    'ajax_create',
+    'taggit',
+    'taggit_autocomplete',
 )
 
 # A sample logging configuration. The only tangible logging
@@ -190,3 +217,11 @@ LOGGING = {
         },
     }
 }
+
+TEST_RUNNER = 'django.test.simple.DjangoTestSuiteRunner'
+
+SOUTH_MIGRATION_MODULES = {
+    'cities_light': 'cities_light.south_migrations',
+    'taggit': 'taggit.south_migrations',
+}
+

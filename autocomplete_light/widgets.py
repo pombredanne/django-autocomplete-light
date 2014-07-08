@@ -15,7 +15,7 @@ from django.utils import safestring
 from django.template.loader import render_to_string
 from django.utils.translation import ugettext_lazy as _
 
-__all__ = ['ChoiceWidget', 'MultipleChoiceWidget']
+__all__ = ['WidgetBase', 'ChoiceWidget', 'MultipleChoiceWidget', 'TextWidget']
 
 
 class WidgetBase(object):
@@ -31,15 +31,18 @@ class WidgetBase(object):
 
     def __init__(self, autocomplete,
                  widget_js_attributes=None, autocomplete_js_attributes=None,
-                 add_another_url=None):
+                 extra_context=None):
 
+        self._autocomplete = None
         if isinstance(autocomplete, basestring):
             self.autocomplete_name = autocomplete
-            from autocomplete_light import registry
-            self.autocomplete = registry[self.autocomplete_name]
         else:
             self.autocomplete = autocomplete
-            self.autocomplete_name = autocomplete.__class__.__name__
+
+        if extra_context is None:
+            self.extra_context = {}
+        else:
+            self.extra_context = extra_context
 
         if widget_js_attributes is None:
             self.widget_js_attributes = {}
@@ -51,7 +54,20 @@ class WidgetBase(object):
         else:
             self.autocomplete_js_attributes = autocomplete_js_attributes
 
-        self.add_another_url = add_another_url
+    def autocomplete():
+        def fget(self):
+            if not self._autocomplete:
+                from autocomplete_light import registry
+                self._autocomplete = registry[self.autocomplete_name]
+
+            return self._autocomplete
+
+        def fset(self, value):
+            self._autocomplete = value
+            self.autocomplete_name = value.__class__.__name__
+
+        return {'fget': fget, 'fset': fset}
+    autocomplete = property(**autocomplete())
 
     def process_js_attributes(self):
         extra_autocomplete_js_attributes = getattr(self.autocomplete,
@@ -63,9 +79,6 @@ class WidgetBase(object):
             'widget_js_attributes', {})
         self.widget_js_attributes.update(
             extra_widget_js_attributes)
-
-        if 'watch' not in self.widget_js_attributes.keys():
-            self.widget_js_attributes['watch'] = '1'
 
         if 'bootstrap' not in self.widget_js_attributes.keys():
             self.widget_js_attributes['bootstrap'] = 'normal'
@@ -85,7 +98,7 @@ class WidgetBase(object):
         final_attrs = self.build_attrs(attrs)
         self.html_id = final_attrs.pop('id', name)
 
-        if value and not isinstance(value, (list, tuple)):
+        if value is not None and not isinstance(value, (list, tuple)):
             values = [value]
         else:
             values = value
@@ -99,16 +112,35 @@ class WidgetBase(object):
         self.process_js_attributes()
 
         autocomplete_name = self.autocomplete_name.lower()
-        return safestring.mark_safe(render_to_string([
-            'autocomplete_light/%s/widget.html' % autocomplete_name,
-            'autocomplete_light/widget.html',
-        ], {
+
+        context = {
             'name': name,
             'values': values,
             'widget': self,
             'extra_attrs': safestring.mark_safe(flatatt(final_attrs)),
             'autocomplete': autocomplete,
-        }))
+        }
+        context.update(self.extra_context)
+        templates = [
+            'autocomplete_light/%s/widget.html' % autocomplete_name,
+            'autocomplete_light/%s/widget.html' % getattr(autocomplete,
+                'widget_template_name', ''),
+            'autocomplete_light/widget.html',
+        ]
+        widget_template = getattr(autocomplete, 'widget_template', None)
+        if widget_template:
+            templates.insert(0, widget_template)
+        return safestring.mark_safe(render_to_string(templates, context))
+
+    def build_attrs(self, extra_attrs=None, **kwargs):
+        attrs = super(WidgetBase, self).build_attrs(extra_attrs, **kwargs)
+
+        if 'class' not in attrs.keys():
+            attrs['class'] = ''
+
+        attrs['class'] += ' autocomplete'
+
+        return attrs
 
 
 class ChoiceWidget(WidgetBase, forms.Select):
@@ -118,12 +150,12 @@ class ChoiceWidget(WidgetBase, forms.Select):
 
     def __init__(self, autocomplete,
                  widget_js_attributes=None, autocomplete_js_attributes=None,
-                 *args, **kwargs):
+                 extra_context=None, *args, **kwargs):
 
         forms.Select.__init__(self, *args, **kwargs)
 
         WidgetBase.__init__(self, autocomplete,
-            widget_js_attributes, autocomplete_js_attributes)
+            widget_js_attributes, autocomplete_js_attributes, extra_context)
 
         self.widget_js_attributes['max_values'] = 1
 
@@ -134,15 +166,17 @@ class MultipleChoiceWidget(WidgetBase, forms.SelectMultiple):
     """
     def __init__(self, autocomplete=None,
                  widget_js_attributes=None, autocomplete_js_attributes=None,
-                 *args, **kwargs):
+                 extra_context=None, *args, **kwargs):
 
         forms.SelectMultiple.__init__(self, *args, **kwargs)
 
         WidgetBase.__init__(self, autocomplete,
-            widget_js_attributes, autocomplete_js_attributes)
+            widget_js_attributes, autocomplete_js_attributes, extra_context)
 
 
 class TextWidget(forms.TextInput, WidgetBase):
+    """ Widget that just adds an autocomplete to fill a text input """
+
     def __init__(self, autocomplete,
                  widget_js_attributes=None, autocomplete_js_attributes=None,
                  *args, **kwargs):
@@ -166,6 +200,6 @@ class TextWidget(forms.TextInput, WidgetBase):
 
         if 'class' not in attrs.keys():
             attrs['class'] = ''
-        attrs['class'] += 'autocomplete-light-text-widget'
+        attrs['class'] += ' autocomplete-light-text-widget'
 
         return attrs

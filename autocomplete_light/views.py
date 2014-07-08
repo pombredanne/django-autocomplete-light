@@ -4,7 +4,7 @@ from django.views.generic import base
 
 import autocomplete_light
 
-__all__ = ['AutocompleteView', 'RegistryView']
+__all__ = ['AutocompleteView', 'RegistryView', 'CreateView']
 
 
 class RegistryView(base.TemplateView):
@@ -18,6 +18,7 @@ class RegistryView(base.TemplateView):
     def get_context_data(self, **kwargs):
         return {
             'registry': autocomplete_light.registry,
+            'registry_items': autocomplete_light.registry.items(),
         }
 
 
@@ -27,7 +28,7 @@ class AutocompleteView(generic.View):
     def get(self, request, *args, **kwargs):
         """
         Return an HttpResponse with the return value of
-        autocomplete.render_autocomplete().
+        autocomplete.autocomplete_html().
 
         This view is called by the autocomplete script, it is expected to
         return the rendered autocomplete box contents.
@@ -40,7 +41,7 @@ class AutocompleteView(generic.View):
         calls autocomplete.init_for_request, passing all arguments it recieved.
 
         Finnaly, it makes an HttpResponse with the result of
-        autocomplete.render_autocomplete(). The javascript will use that to
+        autocomplete.autocomplete_html(). The javascript will use that to
         fill the autocomplete suggestion box.
         """
         try:
@@ -67,22 +68,31 @@ class AutocompleteView(generic.View):
 class CreateView(generic.CreateView):
     """Simple wrapper for generic.CreateView, that responds to _popup."""
 
-    def form_valid(self, form):
-        """ If request.GET._popup, return some javascript. """
-        if self.request.GET.get('_popup', False):
-            self.success_url = '/'  # avoid ImproperlyConfigured
+    def is_popup(self):
+        return self.request.GET.get('_popup', False)
 
-        response = super(CreateView, self).form_valid(form)
-
-        if not self.request.GET.get('_popup', False):
-            return response
+    def respond_script(self, obj=None):
+        if obj is None:
+            obj = self.object
 
         html = []
         html.append(u'<script type="text/javascript">')
         html.append(u'opener.dismissAddAnotherPopup( window, "%s", "%s" );' % (
-            unicode(self.object.pk), unicode(self.object).replace('"', '\\"')))
+            unicode(obj.pk), unicode(obj).replace('"', '\\"')))
         html.append(u'</script>')
 
         html = u''.join(html)
 
         return http.HttpResponse(html, status=201)
+
+    def form_valid(self, form):
+        """ If request.GET._popup, return some javascript. """
+        if self.is_popup():
+            self.success_url = '/'  # avoid ImproperlyConfigured
+
+        response = super(CreateView, self).form_valid(form)
+
+        if not self.is_popup():
+            return response
+
+        return self.respond_script()

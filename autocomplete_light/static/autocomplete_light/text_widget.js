@@ -27,10 +27,14 @@ jQuery.fn.getSelectionStart = function(){
     var pos = input.value.length;
  
     if (input.createTextRange) {
-        var r = document.selection.createRange().duplicate();
-        r.moveEnd('character', input.value.length);
+        if (window.getSelection) {
+            var r = window.getSelection(); //IE11
+        } else {
+            var r = document.selection.createRange().duplicate();
+            r.moveEnd('character', input.value.length);
+        }
         if (r.text == '')
-        pos = input.value.length;
+            pos = input.value.length;
         pos = input.value.lastIndexOf(r.text);
     } else if(typeof(input.selectionStart)!="undefined")
     pos = input.selectionStart;
@@ -100,55 +104,73 @@ yourlabs.TextWidget = function(input) {
             return this.input.getCursorWord();
         }
     }
-
-    // The widget is in charge of managing its Autocomplete.
-    this.initializeAutocomplete = function() {
-        this.autocomplete = this.input.yourlabsAutocomplete(
-            this.autocompleteOptions);
-
-        // Add a class to ease css selection of autocompletes for widgets
-        this.autocomplete.outerContainer.addClass(
-            'autocomplete-light-text-widget');
-    };
-
-    // Bind Autocomplete.selectChoice signal to TextWidget.selectChoice()
-    this.bindSelectChoice = function() {
-        this.input.bind('selectChoice', function(e, choice) {
-            if (!choice.length)
-                return // placeholder: create choice here
-
-            $(this).yourlabsTextWidget().selectChoice(choice);
-        });
-    };
-
-    // Called when a choice is selected from the Autocomplete.
-    this.selectChoice = function(choice) {
-        var inputValue = this.input.val();
-        var choiceValue = this.getValue(choice);
-        var positions = this.input.getCursorWordPositions();
-
-        var newValue = inputValue.substring(0, positions[0]);
-        newValue += choiceValue;
-        newValue += inputValue.substring(positions[1]);
-
-        this.input.val(newValue);
-    }
-
-    // Return the value of an HTML choice, used to fill the input.
-    this.getValue = function(choice) {
-        return choice.html();
-    }
-
-    // Initialize the widget.
-    this.initialize = function() {
-        this.initializeAutocomplete();
-        this.bindSelectChoice();
-    }
 }
 
-// TextWidget factory and registry, as jQuery extension.
+// The widget is in charge of managing its Autocomplete.
+yourlabs.TextWidget.prototype.initializeAutocomplete = function() {
+    this.autocomplete = this.input.yourlabsAutocomplete(
+        this.autocompleteOptions);
+
+    // Add a class to ease css selection of autocompletes for widgets
+    this.autocomplete.box.addClass(
+        'autocomplete-light-text-widget');
+};
+
+// Bind Autocomplete.selectChoice signal to TextWidget.selectChoice()
+yourlabs.TextWidget.prototype.bindSelectChoice = function() {
+    this.input.bind('selectChoice', function(e, choice) {
+        if (!choice.length)
+            return // placeholder: create choice here
+
+        $(this).yourlabsTextWidget().selectChoice(choice);
+    });
+};
+
+// Called when a choice is selected from the Autocomplete.
+yourlabs.TextWidget.prototype.selectChoice = function(choice) {
+    var inputValue = this.input.val();
+    var choiceValue = this.getValue(choice);
+    var positions = this.input.getCursorWordPositions();
+
+    var newValue = inputValue.substring(0, positions[0]);
+    newValue += choiceValue;
+    newValue += inputValue.substring(positions[1]);
+
+    this.input.val(newValue);
+    this.input.focus();
+}
+
+// Return the value of an HTML choice, used to fill the input.
+yourlabs.TextWidget.prototype.getValue = function(choice) {
+    return choice.html();
+}
+
+// Initialize the widget.
+yourlabs.TextWidget.prototype.initialize = function() {
+    this.initializeAutocomplete();
+    this.bindSelectChoice();
+}
+
+// Destroy the widget. Takes a widget element because a cloned widget element
+// will be dirty, ie. have wrong .input and .widget properties.
+yourlabs.TextWidget.prototype.destroy = function(input) {
+    input 
+        .unbind('selectChoice')
+        .yourlabsAutocomplete('destroy');
+}
+
+// TextWidget factory, registry and destroyer, as jQuery extension.
 $.fn.yourlabsTextWidget = function(overrides) {
     var overrides = overrides ? overrides : {};
+
+    if (overrides == 'destroy') {
+        var widget = this.data('widget');
+        if (widget) {
+            widget.destroy(this);
+            this.removeData('widget');
+        }
+        return
+    }
 
     if (this.data('widget') == undefined) {
         // Instanciate the widget
@@ -200,7 +222,7 @@ $.fn.yourlabsTextWidget = function(overrides) {
 }
 
 $(document).ready(function() {
-    $('input[data-bootstrap=normal]').live('initialize', function() {
+    $('body').on('initialize', 'input[data-bootstrap=normal]', function() {
         /*
         Only setup autocompletes on inputs which have data-bootstrap=normal,
         if you want to initialize some autocompletes with custom code, then set
@@ -212,7 +234,7 @@ $(document).ready(function() {
     // Solid initialization, usage::
     //
     //      $(document).bind('yourlabsTextWidgetReady', function() {
-    //          $('.your.autocomplete-light-text-widget').live('initialize', function() {
+    //          $('body').on('initialize', 'input[data-bootstrap=normal]', function() {
     //              $(this).yourlabsTextWidget({
     //                  yourCustomArgs: // ...
     //              })
@@ -234,6 +256,15 @@ $(document).ready(function() {
                 return;
             }
         }
+
+        // Ignore inserted autocomplete box elements.
+        if (widget.is('.yourlabs-autocomplete')) {
+            return;
+        }
+
+        // Ensure that the newly added widget is clean, in case it was cloned.
+        widget.yourlabsWidget('destroy');
+        widget.find('input').yourlabsAutocomplete('destroy');
 
         widget.trigger('initialize');
     });

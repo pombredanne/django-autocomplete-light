@@ -44,9 +44,9 @@ class AutocompleteTestCase(unittest.TestCase):
         self.jazzmen.save()
         self.emos.save()
 
-
     def assert_choices_equal(self, result, test):
-        self.assertEqual(result, test['expected'])
+        self.assertEqual(result, test['expected'],
+                'Unexpected result %s\nTest: %s' % (result, test))
 
     def test_choices_for_request(self):
         if not hasattr(self, 'get_choices_for_request_tests'):
@@ -54,8 +54,10 @@ class AutocompleteTestCase(unittest.TestCase):
 
         for test in self.get_choices_for_request_tests():
             mock = self.autocomplete_mock(request=test['fixture'])
+            for k, v in test.get('kwargs', {}).items():
+                setattr(mock, k, v)
             result = mock.choices_for_request()
-            self.assert_choices_equal(result, test)
+            self.assert_choices_equal(list(result), test)
 
     def test_choices_for_values(self):
         if not hasattr(self, 'get_choices_for_values_tests'):

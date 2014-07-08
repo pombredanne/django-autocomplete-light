@@ -9,6 +9,23 @@ __all__ = ['AutocompleteGeneric']
 
 
 class AutocompleteGeneric(AutocompleteModel):
+    """
+    Autocomplete which considers choices as a list of querysets. It inherits
+    from AutocompleteModel so make sure that you've read the docs and
+    docstrings for AutocompleteModel before using this class.
+
+    choices
+        A list of querysets.
+    search_fields
+        A list of lists of fields to search in, configurable like on
+        ModelAdmin.search_fields. The first list of fields will be used for the
+        first queryset in choices and so on.
+
+    AutocompleteGeneric inherits from AutocompleteModel and supports
+    `limit_choices` and `split_words` exactly like AutocompleteModel.
+
+    However `order_by` is not supported (yet) in AutocompleteGeneric.
+    """
     choices = None
     search_fields = None
 
@@ -34,7 +51,7 @@ class AutocompleteGeneric(AutocompleteModel):
                 return False
 
             try:
-                content_type_id, object_id = value.split('-')
+                content_type_id, object_id = value.split('-', 1)
             except ValueError:
                 return False
 
@@ -75,11 +92,8 @@ class AutocompleteGeneric(AutocompleteModel):
 
         i = 0
         for queryset in self.choices:
-            conditions = Q()
-
-            if q:
-                for search_field in self.search_fields[i]:
-                    conditions |= Q(**{search_field + '__icontains': q})
+            conditions = self._choices_for_request_conditions(q,
+                    self.search_fields[i])
 
             limit = ((self.limit_choices - len(request_choices)) /
                 querysets_left)

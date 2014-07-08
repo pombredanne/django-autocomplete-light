@@ -1,3 +1,223 @@
+1.4.13: Fix #243: IE11 compatability on text widget contributed by Jonathan
+                  Wiklund (@MaZZly)
+
+1.4.12: Fix #231: widget.js should only initialize freshly created widget
+                  elements.
+
+1.4.11: Fix #226: improved positionning of autocomplete
+
+1.4.10: Fix #211: updated pt_BR translation
+
+Also, pt-br was renamed to pt_BR to match django's translation path.
+
+1.4.9: Fix #193: IE8 support hacks.
+
+1.4.8: Fix #195: RegistryView got broken on recent Django versions.
+
+1.4.7:
+
+    - Fix #190: Remove Django 1.6 Depreciation Warning,
+    - Fix #189: Fixed support for USE_THOUSAND_SEPARATOR.
+
+1.4.6:
+
+    - Fix #188: Added debouncing in autocomplete.js,
+    - Fix #173: load static from staticfiles.
+
+1.4.5:
+
+    - Fix #180: Support HTTPS in remote.js,
+    - Fix #184: Mouse support upgrade in focus management,
+    - Fix #182: Removed hard-coded class="" attribute.
+
+1.4.4: Improved IE7 and IE8 support, thanks @rhunwicks
+
+1.4.3:
+    
+    - Fix Added option clearInputOnSelectChoice, patch by @vosi
+    - Fix uninitialized js key, patch by @vosi
+    - Escape choices before putting them in html, patch by @voidus
+    - Added Simon Kohlmeyer to AUTHORS (Volodymyr was there already).
+
+1.4.2 Fix #164: Support iterables in AutocompleteModel.order_by.
+
+1.4.1
+
+    - Fix #163: Use ._default_manager instead of .objects. Thanks @kakulukia
+
+1.4.0
+
+    - BC Break: Default split_words to False again, to **not** match behaviour
+      from django.contrib.admin which is definitively too naive. (Thanks
+      kezabelle for helping in this decision). This means that the default
+      behaviour is like pre-1.3.0 again.
+    - Enable split_words='or' to use "OR" conditions on splitted words.
+    - Set order_by=None by default in AutocompleteModel.
+    - Added missing docstrings.
+    - Made it easier to spot failing tests.
+    - Covered all combinations with tests.
+
+1.3.1
+
+    - Support django 1.5 RelatedFieldWidgetWrapper in
+      FixedModelForm,
+    - Support django-responsive-admin theme (and probably many
+      other customisations) by adding a div with clear:both after
+      the widget.
+
+1.3.0
+
+    - BC Break: Default split_words to True, to match behaviour from
+      django.contrib.admin.
+    - Added split_words and improved search_fields support for
+      AutocompleteGeneric.
+    - Fix #161: Avoid focusing on next field on widget initialization.
+
+1.2.6 Fixed wrong docstring.
+
+1.2.5 Raise AutocompleteNotRegistered instead of KeyError in
+      Registry.__getitem__.
+
+1.2.4 @g1itch: Support hyphens in generic autocomplete object pks.
+
+1.2.3 @mislavcimpersak: Croatian i18n
+
+1.2.2 @g1itch: Rusisan i18n
+
+1.2.1 @jojax: Fix innefective test on is popup, in autocomplete CreateView
+
+1.2.0 
+
+- Fix #132: removed dead line of code, and restored compatibility with
+  autocomplete-light <1.1.29,
+- Implement #136: AutocompleteModel.split_words
+- Auto-hilight the first choice.
+- Fix #135: AutocompleteModel is not compatible with Django 1.3
+
+1.1.31 Fix #129: Firefox support in JS positioning code.
+
+1.1.30 Polish translation contributed by Michał Pasternak.
+
+1.1.29 Fix #126: support .clone(true) with values.
+
+WARNING: This version broke cloning widgets in some cases. This was reported in
+#132 and fixed in 1.2.0.
+
+1.1.28 Regression fix: hide choiceDetail and choiceUpdate from the autocomplete
+       box.
+
+This fixes the default model template, see in test_project:
+
+    http://localhost:8000/admin/default_template_autocomplete/testmodel/add/
+
+The test_project now includes demos created by Michał Pasternak. Thankssss !
+
+1.1.27 Fix #117: django-grappelli support.
+
+Contributed by Michał Pasternak.
+
+1.1.26
+
+- Fixed #114: Use widget_template attr only when set.
+- Fixed #111: Support jQuery's clone(true).
+
+1.1.25 Fixed #108: generic inline support.
+
+1.1.24
+
+- Allow to override the default AutocompleteModelBase class used by register()
+- Implemented django-hvad support
+
+1.1.23: Removed django from install_requires, fixes pip install -U
+
+1.1.22: Fixed DeprecationWarning for Django 1.5.
+
+1.1.21 Bugfix: box was not re-shown after inputing twice the same string
+of minimumCharacters length.
+
+1.1.20 Click on modal overlay closes the popup windo
+
+1.1.19 Make add-another popup a modality
+
+1.1.18 Center add-another popup on screen
+
+1.1.17 Update fr locale
+
+1.1.16 Django 1.5 compatibility. Credit: Patrick Taylor
+
+1.1.15 Fix #99: choices kwarg was ignored
+
+1.1.14 Bugfix: fetchComplete now ready for textStatus == 'abort'
+
+1.1.13
+
+- Enhancement #78: search_fields more like admin,
+- Bugfix: closed brackets in style.css (thanks papalagichen)
+
+1.1.12 Enabled CSRF.
+
+1.1.11 Fixed dynamic initialisation (ie. inlines).
+
+Bug was caused by a wrong attempt at migrating from jq17 live() to jq19 on().
+
+1.1.10
+
+- Partial autocomplete.js rewrite using ideas from bootstrap-typeahead.js,
+- Use of $.proxy() which allowed to get rid of many scope hacks like: var
+  autocomplete = this;
+- When the maximum number of choices has been selected and the input goes,
+  automatically focus on next visible field,
+- Do not show autocomplete if input has below minCharacters,
+- CSS rewrite/debloat (~-50% SLOCs),
+- Backported typeahead CSS,
+- Backported typeahead autocomplete box placement strategy, hoping to fix IE10
+  mobile support,
+- jQuery 1.9 support (thanks Nicolas Seinlet for the heads up).
+
+1.1.9
+
+- Use explicit check for None value instead of trueness, allowing pk=0 (thanks
+  @ekohl).
+- Widget requires proper url setup (thanks @emesik).
+- Rewrote keypress handler using recent contributions.
+
+Also credits to @ekohl and @emesik for working on keypress handling (added to
+AUTHORS).
+
+1.1.8 (was not released on PyPi)
+
+- Alias autocomplete_light.FixedModelForm to autocomplete_light.ModelForm.
+
+1.1.7 Reset default hideAfter to 500, or click support is half broken.
+
+1.1.6
+
+- Fix #77: autocomplete.js "was not as good as bootstrap typeahea",
+- Fix #72: use prototypes in JS to make code faster
+
+Credit to Gennady (@geaden) for having the guts to criticize autocomplete.js.
+
+1.1.5
+
+- Added blocks in autocomplete_light/widget.html which makes it easier to
+  extend - without boilerplate.
+- Refactor CreateView to make it easier to extend.
+- Added widget.extra_context to make it easier to add context to the widget
+  template.
+
+1.1.4 Enter submits the form is there is no selected choice.
+
+Added to AUTHORS: Ewoud Kohl van Wijngaarden
+
+1.1.3 Fix #71: Refactor HTML generation parts in widget.js
+
+1.1.2
+
+- Fix #68: bug when using TextInput with a custom class,
+- Fix #30: exclude already selected items from model autocomplete,
+- Fix #60: got rid of updateWidgets(),
+- Fix #63: default template for AutocompleteModelTemplate,
+
 1.1.1
 
 - Added option to disable watch of autocompletes hidden selects,

@@ -42,6 +42,8 @@ override Widget.getValue() to implement your own logic.
 // Our class will live in the yourlabs global namespace.
 if (window.yourlabs == undefined) window.yourlabs = {};
 
+$.ajaxSettings.traditional = true
+
 /*
 Instanciate a Widget.
 */
@@ -56,156 +58,249 @@ yourlabs.Widget = function(widget) {
     // The number of choices that the user may select with this widget. Set 0
     // for no limit. In the case of a foreign key you want to set it to 1.
     this.maxValues = 0;
+    
+    // Clear input when choice made? 1 for yes, 0 for no
+    this.clearInputOnSelectChoice = "1";
+}
 
-    // When a choice is selected from the autocomplete of this widget,
-    // getValue() is called to add and select the option in the select.
-    this.getValue = function(choice) {
-        return choice.attr('data-value');
-    };
+// When a choice is selected from the autocomplete of this widget,
+// getValue() is called to add and select the option in the select.
+yourlabs.Widget.prototype.getValue = function(choice) {
+    return choice.attr('data-value');
+};
 
-    // The widget is in charge of managing its Autocomplete.
-    this.initializeAutocomplete = function() {
-        this.autocomplete = this.input.yourlabsAutocomplete(
-            this.autocompleteOptions);
+// The widget is in charge of managing its Autocomplete.
+yourlabs.Widget.prototype.initializeAutocomplete = function() {
+    this.autocomplete = this.input.yourlabsAutocomplete(
+        this.autocompleteOptions);
 
-        // Add a class to ease css selection of autocompletes for widgets
-        this.autocomplete.outerContainer.addClass(
-            'autocomplete-light-widget');
-    };
+    // Add a class to ease css selection of autocompletes for widgets
+    this.autocomplete.box.addClass(
+        'autocomplete-light-widget');
+};
 
-    // Bind Autocomplete.selectChoice signal to Widget.selectChoice()
-    this.bindSelectChoice = function() {
-        this.input.bind('selectChoice', function(e, choice) {
-            if (!choice.length)
-                return // placeholder: create choice here
+// Bind Autocomplete.selectChoice signal to Widget.selectChoice()
+yourlabs.Widget.prototype.bindSelectChoice = function() {
+    this.input.bind('selectChoice', function(e, choice) {
+        if (!choice.length)
+            return // placeholder: create choice here
 
-            var widget = $(this).parents('.autocomplete-light-widget'
-                ).yourlabsWidget();
+        var widget = $(this).parents('.autocomplete-light-widget'
+            ).yourlabsWidget();
 
-            widget.selectChoice(choice);
-        });
-    };
+        widget.selectChoice(choice);
+    });
+};
 
-    // Called when a choice is selected from the Autocomplete.
-    this.selectChoice = function(choice) {
-        // Get the value for this choice.
-        var value = this.getValue(choice);
+// Called when a choice is selected from the Autocomplete.
+yourlabs.Widget.prototype.selectChoice = function(choice) {
+    // Get the value for this choice.
+    var value = this.getValue(choice);
 
-        if (!value) {
-            if (window.console) console.log('yourlabs.Widget.getValue failed');
-            return;
-        }
+    if (!value) {
+        if (window.console) console.log('yourlabs.Widget.getValue failed');
+        return;
+    }
 
-        this.freeDeck();
-        this.addToDeck(choice, value);
-        this.addToSelect(choice, value);
-        this.resetDisplay();
+    this.freeDeck();
+    this.addToDeck(choice, value);
+    this.addToSelect(choice, value);
+    
+    var index = $(':input:visible').index(this.input);
+    this.resetDisplay();
 
+    if (this.input.is(':visible')) {
+        this.input.focus();
+    } else {
+        var next = $(':input:visible:eq('+ index +')');
+        next.focus();
+    }
+
+    if (this.clearInputOnSelectChoice === "1")
         this.input.val('');
-    }
+}
 
-    // Unselect a value if the maximum number of selected values has been
-    // reached.
-    this.freeDeck = function() {
-        var slots = this.maxValues - this.deck.children().length;
+// Unselect a value if the maximum number of selected values has been
+// reached.
+yourlabs.Widget.prototype.freeDeck = function() {
+    var slots = this.maxValues - this.deck.children().length;
 
-        if (this.maxValues && slots < 1) {
-            // We'll remove the first choice which is supposed to be the oldest
-            var choice = $(this.deck.children()[0]);
+    if (this.maxValues && slots < 1) {
+        // We'll remove the first choice which is supposed to be the oldest
+        var choice = $(this.deck.children()[0]);
 
-            this.deselectChoice(choice);
-        }
-    }
-
-    // Empty the search input and hide it if maxValues has been reached.
-    this.resetDisplay = function() {
-        var selected = this.select.find('option:selected').length;
-
-        if (this.maxValues && selected == this.maxValues) {
-            this.input.hide();
-        } else {
-            this.input.show();
-        }
-
-        this.deck.show();
-    }
-
-    // Add a selected choice of a given value to the deck.
-    this.addToDeck = function(choice, value) {
-        var existing_choice = this.deck.find('[data-value="'+value+'"]');
-
-        // Avoid duplicating choices in the deck.
-        if (!existing_choice.length) {
-            var choice = choice.clone();
-
-            // In case getValue() actually **created** the value, for example
-            // with a post request.
-            choice.attr('data-value', value);
-
-            this.deck.append(choice);
-
-            // Append a clone of the .remove element.
-            choice.prepend(this.widget.find('.remove:not(:visible)').clone().show());
-        }
-    }
-
-    // Add a selected choice of a given value to the deck.
-    this.addToSelect = function(choice, value) {
-        var option = this.select.find('option[value="'+value+'"]');
-
-        if (! option.length) {
-            this.select.append(
-                '<option selected="selected" value="'+ value +'"></option>');
-            option = this.select.find('option[value="'+value+'"]');
-        }
-
-        option.attr('selected', 'selected');
-
-        this.select.trigger('change');
-    }
-
-    // Called when the user clicks .remove in a deck choice.
-    this.deselectChoice = function(choice) {
-        var value = this.getValue(choice);
-
-        this.select.find('option[value="'+value+'"]').remove();
-        this.select.trigger('change');
-
-        choice.remove();
-
-        if (this.deck.children().length == 0) {
-            this.deck.hide();
-        }
-
-        this.resetDisplay();
-    };
-
-    this.initialize = function() {
-        this.initializeAutocomplete();
-
-        // Working around firefox tempering form values after reload
-        var widget = this;
-        this.deck.find(this.autocomplete.choiceSelector).each(function() {
-            var value = widget.getValue($(this));
-            var option = widget.select.find('option[value="'+value+'"]');
-            if (!option.attr('selected')) option.attr('selected', true);
-        });
-
-        var choices = this.deck.find(
-            this.input.yourlabsAutocomplete().choiceSelector);
-
-        // Add the remove icon to each choice
-        choices.prepend(this.widget.find('.remove:last').clone().show());
-        this.resetDisplay();
-
-        this.bindSelectChoice();
+        this.deselectChoice(choice);
     }
 }
 
+// Empty the search input and hide it if maxValues has been reached.
+yourlabs.Widget.prototype.resetDisplay = function() {
+    var selected = this.select.find('option:selected').length;
+
+    if (this.maxValues && selected == this.maxValues) {
+        this.input.hide();
+    } else {
+        this.input.show();
+    }
+
+    this.deck.show();
+
+    // Also fix the position if the autocomplete is shown.
+    if (this.autocomplete.box.is(':visible')) this.autocomplete.fixPosition();
+}
+
+yourlabs.Widget.prototype.deckChoiceHtml = function(choice, value) {
+    var deckChoice = choice.clone();
+
+    this.addRemove(deckChoice);
+
+    return deckChoice;
+}
+
+yourlabs.Widget.prototype.optionChoice = function(option) {
+    var optionChoice = this.choiceTemplate.clone();
+    
+    var target = optionChoice.find('.append-option-html');
+
+    if (target.length) {
+        target.append(option.html());
+    } else {
+        optionChoice.html(option.html());
+    }
+
+    return optionChoice;
+}
+
+yourlabs.Widget.prototype.addRemove = function(choices) {
+    var removeTemplate = this.widget.find('.remove:last').clone().show();
+
+    var target = choices.find('.prepend-remove');
+
+    if (target.length) {
+        target.prepend(removeTemplate);
+    } else {
+        // Add the remove icon to each choice
+        choices.prepend(removeTemplate);
+    } 
+}
+
+// Add a selected choice of a given value to the deck.
+yourlabs.Widget.prototype.addToDeck = function(choice, value) {
+    var existing_choice = this.deck.find('[data-value="'+value+'"]');
+
+    // Avoid duplicating choices in the deck.
+    if (!existing_choice.length) {
+        var deckChoice = this.deckChoiceHtml(choice);
+
+        // In case getValue() actually **created** the value, for example
+        // with a post request.
+        deckChoice.attr('data-value', value);
+
+        this.deck.append(deckChoice);
+    }
+}
+
+// Add a selected choice of a given value to the deck.
+yourlabs.Widget.prototype.addToSelect = function(choice, value) {
+    var option = this.select.find('option[value="'+value+'"]');
+
+    if (! option.length) {
+        this.select.append(
+            '<option selected="selected" value="'+ value +'"></option>');
+        option = this.select.find('option[value="'+value+'"]');
+    }
+
+    option.attr('selected', 'selected');
+
+    this.select.trigger('change');
+    this.updateAutocompleteExclude();
+}
+
+// Called when the user clicks .remove in a deck choice.
+yourlabs.Widget.prototype.deselectChoice = function(choice) {
+    var value = this.getValue(choice);
+
+    this.select.find('option[value="'+value+'"]').remove();
+    this.select.trigger('change');
+
+    choice.remove();
+
+    if (this.deck.children().length == 0) {
+        this.deck.hide();
+    }
+
+    this.updateAutocompleteExclude();
+    this.resetDisplay();
+};
+
+yourlabs.Widget.prototype.updateAutocompleteExclude = function() {
+    var widget = this;
+    var choices = this.deck.find(this.autocomplete.choiceSelector);
+
+    this.autocomplete.data['exclude'] = $.map(choices, function(choice) { 
+        return widget.getValue($(choice)); 
+    });
+}
+
+yourlabs.Widget.prototype.initialize = function() {
+    this.initializeAutocomplete();
+
+    // Working around firefox tempering form values after reload
+    var widget = this;
+    this.deck.find(this.autocomplete.choiceSelector).each(function() {
+        var value = widget.getValue($(this));
+        var option = widget.select.find('option[value="'+value+'"]');
+        if (!option.attr('selected')) option.attr('selected', true);
+    });
+
+    var choices = this.deck.find(
+        this.input.yourlabsAutocomplete().choiceSelector);
+
+    this.addRemove(choices);
+    this.resetDisplay();
+
+    this.bindSelectChoice();
+    this.clearBoth()
+}
+
+// Add an empty div with clear:both after the widget's container.
+// This is meant to support django-responsive-admin templates.
+yourlabs.Widget.prototype.clearBoth = function() {
+    this.widget.parent().append('<div style="clear: both"></div>');
+}
+
+// Destroy the widget. Takes a widget element because a cloned widget element
+// will be dirty, ie. have wrong .input and .widget properties.
+yourlabs.Widget.prototype.destroy = function(widget) {
+    widget.find('input')
+        .unbind('selectChoice')
+        .yourlabsAutocomplete('destroy');
+}
+
+// Get or create or destroy a widget instance.
+//
+// On first call, yourlabsWidget() will instanciate a widget applying all
+// passed overrides.
+// 
+// On later calls, yourlabsWidget() will return the previously created widget
+// instance, which is stored in widget.data('widget').
+//
+// Calling yourlabsWidget('destroy') will destroy the widget. Useful if the
+// element was blindly cloned with .clone(true) for example.
 $.fn.yourlabsWidget = function(overrides) {
     var overrides = overrides ? overrides : {};
 
-    if (this.data('widget') == undefined) {
+    var widget = this.yourlabsRegistry('widget');
+
+    if (overrides == 'destroy') {
+        if (widget) {
+            widget.destroy(this);
+            this.removeData('widget');
+        }
+        return
+    }
+
+    if (widget == undefined) {
         // Instanciate the widget
         var widget = new yourlabs.Widget(this);
 
@@ -217,7 +312,8 @@ $.fn.yourlabsWidget = function(overrides) {
 
             if (key.substr(0, 12) == 'autocomplete') {
                 var newKey = key.replace('autocomplete', '');
-                newKey = newKey.replace(newKey[0], newKey[0].toLowerCase())
+                newKey = newKey.replace(newKey.charAt(0),
+                                        newKey.charAt(0).toLowerCase());
                 dataOverrides['autocompleteOptions'][newKey] = data[key];
             } else {
                 dataOverrides[key] = data[key];
@@ -230,7 +326,7 @@ $.fn.yourlabsWidget = function(overrides) {
         // Allow javascript object overrides
         widget = $.extend(widget, overrides);
 
-        this.data('widget', widget);
+        $(this).yourlabsRegistry('widget', widget);
 
         // Setup for usage
         widget.initialize();
@@ -240,11 +336,11 @@ $.fn.yourlabsWidget = function(overrides) {
         widget.widget.trigger('widget-ready');
     }
 
-    return this.data('widget');
+    return widget;
 }
 
 $(document).ready(function() {
-    $('.autocomplete-light-widget[data-bootstrap=normal]').live('initialize', function() {
+    $('body').on('initialize', '.autocomplete-light-widget[data-bootstrap=normal]', function() {
         /*
         Only setup widgets which have data-bootstrap=normal, if you want to
         initialize some Widgets with custom code, then set
@@ -254,7 +350,7 @@ $(document).ready(function() {
     });
 
     // Call Widget.deselectChoice when .remove is clicked
-    $('.autocomplete-light-widget .deck .remove').live('click', function() {
+    $('body').on('click', '.autocomplete-light-widget .deck .remove', function() {
         var widget = $(this).parents('.autocomplete-light-widget'
             ).yourlabsWidget();
 
@@ -264,70 +360,10 @@ $(document).ready(function() {
         widget.deselectChoice(choice);
     });
 
-    /*
-    Support values added directly in the select via js (ie. choices created in
-    modal or popup).
-
-    For this, we make one timer that regularely checks for values in the select
-    that are not in the deck. The reason for that is that change is not triggered
-    when options are added like this:
-
-        $('select#id-dependencies').append(
-            '<option value="9999" selected="selected">blabla</option>')
-
-    Currently, browsers still haven't fixed it. The optimizations that are in
-    place are:
-
-    - only check for widgets which have data-watch=1, default for widgets
-      created in python,
-    - only check for widgets which have data-dirty=1, it is set if an option
-      was added using event DOMNodeInserted,
-
-    Sorry for the hack but I see no other way, this is HTML's fault. Any help
-    is appreciated.
-    */
-    function updateWidgets() {
-        $('.autocomplete-light-widget[data-watch=1][data-dirty=1][data-widget-ready=1]').each(function() {
-            var widget = $(this).yourlabsWidget();
-            var value = widget.select.val();
-
-            if (!value) return;
-
-            function updateWidgetValue(value) {
-                // is this necessary ?
-                // if (!value) return;
-
-                var choice = widget.deck.find('[data-value="'+value+'"]');
-
-                if (!choice.length) {
-                    var choice = widget.choiceTemplate.clone();
-                    var html = widget.select.find('option[value="'+value+'"]').html();
-
-                    choice.html(html);
-                    choice.attr('data-value', value);
-
-                    widget.selectChoice(choice);
-                }
-            }
-
-            if (value instanceof Array) {
-                for(var i=0; i<value.length; i++) {
-                    updateWidgetValue(value[i]);
-                }
-            } else {
-                updateWidgetValue(value);
-            }
-
-            $(this).attr('data-dirty', 0);
-        });
-        setTimeout(updateWidgets, 2000);
-    }
-    setTimeout(updateWidgets, 1000);
-
     // Solid initialization, usage:
     //
     //      $(document).bind('yourlabsWidgetReady', function() {
-    //          $('.your.autocomplete-light-widget').live('initialize', function() {
+    //          $('.your.autocomplete-light-widget').on('initialize', function() {
     //              $(this).yourlabsWidget({
     //                  yourCustomArgs: // ...
     //              })
@@ -340,28 +376,82 @@ $(document).ready(function() {
     });
 
     $(document).bind('DOMNodeInserted', function(e) {
+        /*
+        Support values added directly in the select via js (ie. choices created in
+        modal or popup).
+
+        For this, we listen to DOMNodeInserted and intercept insert of <option> nodes.
+        
+        The reason for that is that change is not triggered when options are
+        added like this:
+
+            $('select#id-dependencies').append(
+                '<option value="9999" selected="selected">blabla</option>')
+        */
         if ($(e.target).is('option')) { // added an option ?
-            widget = $(e.target).parents('.autocomplete-light-widget');
+            var widget = $(e.target).parents('.autocomplete-light-widget');
 
             if (!widget.length) {
                 return;
             }
 
-            // mark widget as dirty, so that updateWidgets 'cron' picks it up.
-            widget.attr('data-dirty', 1);
+            widget = widget.yourlabsWidget();
+            var option = $(e.target);
+            var value = option.attr('value');
+            var choice = widget.deck.find('[data-value="'+value+'"]');
+
+            if (!choice.length) {
+                var deckChoice = widget.optionChoice(option);
+
+                deckChoice.attr('data-value', value);
+
+                widget.selectChoice(deckChoice);
+            }
         } else { // added a widget ?
-            var widget = $(e.target).find('.autocomplete-light-widget');
+            var notReady = '.autocomplete-light-widget:not([data-widget-ready])'
+            var widget = $(e.target).find(notReady);
 
             if (!widget.length) {
-                widget = $(e.target).is('.autocomplete-light-widget') ? $(e.target) : false;
+                widget = $(e.target).is(notReady) ? $(e.target) : false;
 
                 if (!widget) {
                     return;
                 }
             }
 
+            // Ignore inserted autocomplete box elements.
+            if (widget.is('.yourlabs-autocomplete')) {
+                return;
+            }
+
+            // Ensure that the newly added widget is clean, in case it was
+            // cloned with data.
+            widget.yourlabsWidget('destroy');
+            widget.find('input').yourlabsAutocomplete('destroy');
+
             // added a widget: initialize the widget.
             widget.trigger('initialize');
         }
     });
+    
+    var ie = yourlabs.getInternetExplorerVersion();
+    if (ie != -1 && ie < 9) {
+        observe = [
+            '.autocomplete-light-widget:not([data-yourlabs-skip])',
+            '.autocomplete-light-widget option:not([data-yourlabs-skip])'
+        ].join();
+        $(observe).attr('data-yourlabs-skip', 1);
+
+        function ieDOMNodeInserted() {
+            // http://msdn.microsoft.com/en-us/library/ms536957
+            $(observe).each(function() {
+                $(document).trigger(jQuery.Event('DOMNodeInserted', {target: $(this)}));
+                $(this).attr('data-yourlabs-skip', 1);
+            });
+
+            setTimeout(ieDOMNodeInserted, 500);
+        }
+        setTimeout(ieDOMNodeInserted, 500);
+    }
+
 });

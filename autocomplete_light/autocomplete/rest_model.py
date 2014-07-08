@@ -1,9 +1,14 @@
 import urllib
 
 from django import http
-from django.utils import simplejson
 
-from model import AutocompleteModel
+try:
+    import json
+except ImportError:
+    from django.utils import simplejson as json
+
+
+from .model import AutocompleteModel
 
 
 class AutocompleteRestModel(AutocompleteModel):
@@ -93,7 +98,7 @@ class AutocompleteRestModel(AutocompleteModel):
         except:
             return
         else:
-            for data in simplejson.loads(body):
+            for data in json.loads(body):
                 url = data.pop('url')
 
                 for name in data.keys():
@@ -133,7 +138,7 @@ class AutocompleteRestModel(AutocompleteModel):
         model_class = self.model_for_source_url(url)
 
         fh = urllib.urlopen(url)
-        data = simplejson.loads(fh.read())
+        data = json.loads(fh.read())
         data.pop('url')
         fh.close()
 
